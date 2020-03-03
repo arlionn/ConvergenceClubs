@@ -1,0 +1,114 @@
+---
+title: "Convergence club analysis in R"
+author: "Carlos Mendez"
+output:
+  html_notebook:
+    code_folding: show
+    highlight: monochrome
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 4
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+  html_document:
+    code_download: true
+    df_print: paged
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 4
+    number_sections: true
+    code_folding: "show"
+    theme: "cosmo"
+    highlight: "monochrome"
+  pdf_document: default
+  word_document: default
+  github_document: default
+bibliography: biblio.bib
+---
+
+<style>
+h1.title {font-size: 18pt; color: DarkBlue;} 
+body, h1, h2, h3, h4 {font-family: "Palatino", serif;}
+body {font-size: 12pt;}
+/* Headers */
+h1,h2,h3,h4,h5,h6{font-size: 14pt; color: #00008B;}
+body {color: #333333;}
+a, a:hover {color: #8B3A62;}
+pre {font-size: 12px;}
+</style>
+
+Suggested citation: 
+
+> Mendez C. (2020).  Convergence club analysis in R. R Studio/RPubs. Available at <https://rpubs.com/quarcs-lab/tutorial-convergence-clubs>
+
+This work is licensed under the Creative Commons Attribution-Non Commercial-Share Alike 4.0 International License. 
+
+
+Acknowledgment:
+
+Material adapted from multiple sources, in particular [Sichera and Pizzuto (2019)]https://journal.r-project.org/archive/2019/RJ-2019-021/RJ-2019-021.pdf)
+
+# Libraries
+
+## Install libraries
+
+```{r eval=F, include=TRUE}
+install.packages("devtools")
+devtools::install_github("rhobis/ConvergenceClubs")
+packageVersion("ConvergenceClubs") 
+```
+
+```{r eval=F, include=TRUE}
+install.packages("tidyverse")
+packageVersion("tidyverse") 
+```
+
+
+## Load librries
+
+```{r message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ConvergenceClubs)
+library(tidyverse)
+
+
+# Change the presentation of decimal numbers to 4 and avoid scientific notation
+options(prompt="R> ", digits=4, scipen=7)
+```
+
+# Tutorial objectives
+
+- Import `.csv` from github
+
+
+
+# Replication files
+
+- If you are a member of the [QuaRCS lab](https://quarcs-lab.rbind.io/), you can run this tutorial in [R Studio Cloud](https://rstudio.cloud/spaces/15597/project/965714) and access the files in the following [Github Repository](https://github.com/quarcs-lab/ConvergenceClubs)
+
+# Preliminary material
+
+# Import data
+
+
+
+
+# References and tutorials
+
+- [Sichera, R. and Pizzuto, P., 2019. ConvergenceClubs: A Package for Performing the Phillips and Sul's Club Convergence Clustering Procedure. The R Journal](https://journal.r-project.org/archive/2019/RJ-2019-021/RJ-2019-021.pdf). 
+- <https://rhobis.rbind.io/convergenceclubs/index.html>
+- <https://rhobis.rbind.io/convergenceclubs/reference/index.html>
+- <https://cran.r-project.org/web/packages/ConvergenceClubs>
+- <https://github.com/rhobis/ConvergenceClubs>
+- <https://rhobis.rbind.io/blog/convergenceclubs-package-release>
+- <https://rpubs.com/econdata777/ConvergenceClub-package>
+
+
+
+
+END

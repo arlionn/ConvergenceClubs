@@ -75,6 +75,17 @@ plot(mclubs, clubs=NULL, legend=TRUE)
 
 ```
 
+References and Tutorials
+----------------------
+
+- <https://rhobis.rbind.io/convergenceclubs/index.html>
+- <https://rhobis.rbind.io/convergenceclubs/reference/index.html>
+- <https://cran.r-project.org/web/packages/ConvergenceClubs>
+- <https://rhobis.rbind.io/blog/convergenceclubs-package-release>
+- <https://journal.r-project.org/archive/2019/RJ-2019-021/RJ-2019-021.pdf>
+- <https://rpubs.com/econdata777/ConvergenceClub-package>
+
+
 More
 ----
 
