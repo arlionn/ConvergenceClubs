@@ -2,16 +2,6 @@
 title: "Convergence club analysis in R"
 author: "Carlos Mendez"
 output:
-  html_notebook:
-    code_folding: show
-    highlight: monochrome
-    number_sections: yes
-    theme: cosmo
-    toc: yes
-    toc_depth: 4
-    toc_float:
-      collapsed: no
-      smooth_scroll: no
   html_document:
     code_download: true
     df_print: paged
@@ -24,9 +14,19 @@ output:
     code_folding: "show"
     theme: "cosmo"
     highlight: "monochrome"
+  github_document: default
   pdf_document: default
   word_document: default
-  github_document: default
+  html_notebook:
+    code_folding: show
+    highlight: monochrome
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 4
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
 bibliography: biblio.bib
 ---
 
@@ -68,7 +68,7 @@ packageVersion("tidyverse")
 ```
 
 
-## Load librries
+## Load libraries
 
 ```{r message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -76,31 +76,265 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ConvergenceClubs)
 library(tidyverse)
 
-
 # Change the presentation of decimal numbers to 4 and avoid scientific notation
-options(prompt="R> ", digits=4, scipen=7)
+options(prompt="R> ", digits=4, scipen=100)
 ```
 
 # Tutorial objectives
 
-- Import `.csv` from github
+- Import `.csv` from github as `data.frame`
 
 
 
-# Replication files
+## Replication files
 
 - If you are a member of the [QuaRCS lab](https://quarcs-lab.rbind.io/), you can run this tutorial in [R Studio Cloud](https://rstudio.cloud/spaces/15597/project/965714) and access the files in the following [Github Repository](https://github.com/quarcs-lab/ConvergenceClubs)
 
-# Preliminary material
+## Preliminary material
+
+- [Sichera, R. and Pizzuto, P., 2019. ConvergenceClubs: A Package for Performing the Phillips and Sul's Club Convergence Clustering Procedure. The R Journal](https://journal.r-project.org/archive/2019/RJ-2019-021/RJ-2019-021.pdf). 
 
 # Import data
 
+```{r}
+y <- read_csv("https://raw.githubusercontent.com/quarcs-lab/ConvergenceClubs/master/data/filteredGDP.csv")
+y <- as.data.frame(y)
+head(y)
+```
+
+
+This dataframe should be filtered  in order to remove business cycles. Also, it must not contain any NA or NaN values.
+
+
+# Define parameters
+
+## For finding clubs
+
+- `dataCols`: integer vector with the column indices of the data
+
+```{r}
+PAR_dataCols <- 2:35
+```
+
+- `unit_names`: integer scalar indicating, if present, the index of a column with codes of the units
+
+```{r}
+PAR_unit_names <- 1
+```
+
+- `refCol`: integer scalar indicating the index of the column to use for ordering data
+
+```{r}
+PAR_refCol <- 35
+```
+
+- `time_trim`: a numeric value between 0 and 1, representing the portion of time periods to trim when running log-t regression model. Phillips and Sul (2007, 2009) suggest to discard the first third of the period.
+
+```{r}
+PAR_time_trim <- 1/3
+```
+
+- `HACmethod`: string indicating whether a Fixed Quadratic Spectral Bandwidth (HACmethod="FQSB") or an Adaptive Quadratic Spectral Bandwidth (HACmethod="AQSB") should be used for the truncation of the Quadratic Spectral kernel in estimating the log-t regression model with heteroskedasticity and autocorrelation consistent standard errors. The default method is "FQSB".
+
+```{r}
+PAR_HACmethod <- "AQSB"
+```
+
+- `cstar`: numeric scalar, indicating the threshold value of the sieve criterion (c*) to include units in the detected core (primary) group (step 3 of Phillips and Sul (2007, 2009) clustering algorithm). The default value is 0.
+
+```{r}
+PAR_cstar <- 0
+```
+
+- `cstar_method`: a string specifying whether cstar should be mantained fixed (cstar_method="fixed") or increased iteratively until the whole club satisfies the condition tvalue>-1.65 (cstar_method="incremental"). Default is cstar_method="fixed" (see Details).
+
+```{r}
+PAR_cstar_method <- "fixed"
+```
+
+- `cstar_increment`: a positive value specifying the increment to cstar, only valid if cstar_method="incremental" (see Details); the default value is 0.1.
+
+```{r}
+PAR_cstar_increment <- 0.1
+```
+
+- `cstar_cap`: scalar indicating the maximum value up to which cstar can be increased; the default value is 3.
+
+```{r}
+PAR_cstar_cap <- 3
+```
+
+## For merging clubs
+
+- `mergeMethod`: character string indicating the merging method to use. Methods available are "PS" for Phillips and Sul (2009) and "vLT" for von Lyncker and Thoennessen (2017).
+
+```{r}
+PAR_mergeMethod <- "PS"
+```
+
+- `threshold`: a numeric value indicating the threshold to be used with the t-test.
+
+```{r}
+PAR_threshold <- -1.65
+```
+
+- `mergeDivergent`: logical, if TRUE, indicates that merging of divergent units should be tried.
+
+```{r}
+PAR_mergeDivergent <- FALSE
+```
+
+- `estar`: a numeric value indicating the threshold e* to test if divergent units may be included in one of the new convergence clubs. To be used only if mergeDivergent=TRUE
+
+```{r}
+#PAR_estar <- 
+```
+
+# Compute transitonal paths
+
+h(it) = N log[y(it)] / ∑ log[y(it)]
+
+```{r}
+h <- computeH(y[,-1], quantity="h")
+```
+
+
+# Compute cross-sectional variance
+
+The cross sectional variation H(it) is computed as the quadratic distance measure for the panel from the common limit and under the hypothesis of the model should converge to zero as t tends towards infinity:
+
+H(t) = 1/N ∑ [h(it)-1]^2 --> 0 as t -> infinity
+
+
+```{r}
+H <- computeH(y[,-1], quantity="H")
+```
+
+# Compute variance ratio
+
+# Convergence test
+
+Estimates the log-t regression model proposed by Phillips and Sul (2007, 2009) in order to investigate the presence of convergence by adopting the Andrews estimator of long-run variance (fixed or adaptive bandwidth of the kernel).
+
+The following linear model is estimated:
+
+log[H(1)/H(t)] - 2log[log(t)] = α + β log(t) + u(t)
+
+Heteroskedasticity and autocorrelation consistent (HAC) standard errors are used with Quadratic Spectral kernel (Andrews, 1991), If HACmethod="FQSB", a fixed bandwidth parameter is applied, while with HACmethod="AQSB" an adaptive bandwidth parameter is employed.
+
+```{r}
+log_t_test <- estimateMod(H, 
+                          time_trim = PAR_time_trim, 
+                          HACmethod = PAR_HACmethod)
+log_t_test
+```
 
 
 
-# References and tutorials
+
+# Find clubs
+
+Find convergence clubs by means of Phillips and Sul clustering procedure.
+
+Phillips and Sul clustering procedure, the following steps are implemented:
+
+(Cross section last observation ordering): Sort units in descending order according to the last panel observation of the period;
+
+(Core group formation): Run the log-t regression for the first k units (2 < k < N) maximizing k under the condition that t-value is > -1.65. In other words, chose the core group size k* as follows:
+
+k* = argmax \, t(k)
+
+subject to
+
+min t(k) > 1.65
+
+If the condition t(k) > -1.65 does not hold for k = 2 (the first two units), drop the first unit and repeat the same procedure. If t(k) > -1.65 does not hold for any units chosen, the whole panel diverges;
+
+(Sieve the data for club membership): After the core group is detected, run the log-t regression for the core group adding (one by one) each unit that does not belong to the latter. If t(k) is greater than a critical value c* add the new unit in the convergence club. All these units (those included in the core group k* plus those added) form the first convergence club. Note that Phillips and Sul (2007) suggest to make sure t(k) > -1.65 for the subconvergence group obtained. Otherwise, repeat the procedure by increasing the value of the c* parameter until the condition t(k) > -1.65 is satisfied for the subconvergence group;
+
+(Recursion and stopping rule): If there are units for which the previous condition fails (t(k) < c*), gather all these units in one group and run the log-t test to see if the condition t(k) > -1.65 holds. If the condition is satisfied, conclude that there are two convergence clubs. Otherwise, step 1 to 3 should be repeated on the same group to determine whether there are other subgroups that constitute convergence clubs. If no k in step 2 satisfies the condition t(k) > -1.65, the remaining units diverge.
+
+Note that the clustering procedure may return groups with t(k) < -1.65, which are not really convergence clubs. In this case, following step 3 of the clustering procedure there are two options: (i) allow an iterative increase of the cstar parameter until the subconvergence club satisfies the condition t(k) > -1.65. In this case it should the argument cstar_method should be set to "incremental" and a positive argument for the cstar_increment argument should be chosen; (ii) increase the value of the cstar in order to increase the discriminatory power of the log-t test in the formation of each club.
+
+
+```{r}
+clubs <- findClubs(y, 
+                   dataCols        = PAR_dataCols, 
+                   unit_names      = PAR_unit_names, 
+                   refCol          = PAR_refCol, 
+                   time_trim       = PAR_time_trim, 
+                   HACmethod       = PAR_HACmethod,
+                   cstar           = PAR_cstar,
+                   cstar_method    = PAR_cstar_method,
+                   cstar_increment = PAR_cstar_increment,
+                   cstar_cap       = PAR_cstar_cap)
+summary(clubs)
+```
+
+
+# Merge clubs
+
+Merges a list of clubs created with the function findClubs by either Phillips and Sul method or von Lyncker and Thoennessen procedure.
+
+Phillips and Sul (2009) suggest a "club merging algorithm" to avoid over determination due to the selection of the parameter c*. This algorithm suggests to merge for adjacent groups. In particular, it works as follows:
+
+Take the first two groups detected in the basic clustering mechanism and run the log-t test. If the t-statistic is larger than -1.65, these groups together form a new convergence club;
+
+Repeat the test adding the next group and continue until the basic condition (t-statistic > -1.65) holds;
+
+If convergence hypothesis is rejected, conclude that all previous groups converge, except the last one. Hence, start again the test merging algorithm beginning from the group for which the hypothesis of convergence did not hold.
+
+On the other hand, von Lyncker and Thoennessen (2017), propose a modified version of the club merging algorithm that works as follows:
+
+Take all the groups detected in the basic clustering mechanism (P) and run the t-test for adjacent groups, obtaining a (M × 1) vector of convergence test statistics t (where M = P - 1 and m = 1, ..., M);
+
+Merge for adjacent groups starting from the first, under the conditions t(m) > -1.65 and t(m) > t(m+1). In particular, if both conditions hold, the two clubs determining t(m) are merged and the algorithm starts again from step 1, otherwise it continues for all following pairs;
+
+For the last element of vector M (the value of the last two clubs) the only condition required for merging is t(m=M) > -1.65.
+
+```{r}
+mclubs <- mergeClubs(clubs,
+                     mergeMethod     = PAR_mergeMethod,
+                     threshold       = PAR_threshold,
+                     mergeDivergent  = PAR_mergeDivergent)
+summary(mclubs)
+```
+
+
+# List clubs
+
+```{r}
+print(mclubs)
+```
+
+
+# Plot clubs
+
+```{r}
+par(mar=c(2.1,1.8,1,1))
+plot(mclubs)
+```
+
+
+```{r}
+plot(mclubs, clubs=NULL, legend=TRUE)
+```
+
+
+
+# References
+
+
+- Andrews, D. W., 1991. Heteroskedasticity and autocorrelation consistent covariance matrix estimation. Econometrica: Journal of the Econometric Society, 817-858.
+
+- Phillips, P. C.; Sul, D., 2007. Transition modeling and econometric convergence tests. Econometrica 75 (6), 1771-1855.
+
+- Phillips, P. C.; Sul, D., 2009. Economic transition and growth. Journal of Applied Econometrics 24 (7), 1153-1185.
+
+- Von Lyncker, K.; Thoennessen, R., 2017. Regional club convergence in the EU: evidence from a panel data analysis. Empirical Economics 52 (2), 525-553
 
 - [Sichera, R. and Pizzuto, P., 2019. ConvergenceClubs: A Package for Performing the Phillips and Sul's Club Convergence Clustering Procedure. The R Journal](https://journal.r-project.org/archive/2019/RJ-2019-021/RJ-2019-021.pdf). 
+
 - <https://rhobis.rbind.io/convergenceclubs/index.html>
 - <https://rhobis.rbind.io/convergenceclubs/reference/index.html>
 - <https://cran.r-project.org/web/packages/ConvergenceClubs>
